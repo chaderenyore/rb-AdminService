@@ -1,34 +1,43 @@
 const mongoose = require("mongoose");
 module.exports.schemas = {
   session_id: {
-        type: String
-      },
+    type: String,
+  },
   admin_id: {
-    type: String
+    type: String,
   },
   email: {
-    type: String
+    type: String,
   },
-  is_active:{
-    type: Boolean
+  is_active: {
+    type: Boolean,
   },
   lat: {
-    type: Number
+    type: Number,
   },
   long: {
-    type: Number
+    type: Number,
   },
   logged_in_time: {
     type: Number,
   },
   logged_out_time: {
-    type: Number
+    type: Number,
   },
-   login_duration: {
+  login_duration: {
     type: String,
   },
   role: {
     type: String,
-    enum: ["super", "admin", "support", "content", "review"]
+    enum: [
+      "super",
+      "admin",
+      "support",
+      "content-writer",
+      "research-reviewer",
+      "moderator",
+      "account-view",
+      "account-edit",
+    ],
   },
 };
