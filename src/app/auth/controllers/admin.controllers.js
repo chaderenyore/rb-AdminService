@@ -189,6 +189,7 @@ async function loginAdmin(req, res, next) {
     return response(res, data);
   }
 }
+
 async function logoutAdmin(req, res, next) {
   try {
 
@@ -253,6 +254,7 @@ async function logoutAdmin(req, res, next) {
     return response(res, data);
   }
 }
+
 async function getSingleAdmin(req, res, next) {
   try {
     const admin = await AdminServices.getAdminById(req.params.id);
@@ -288,6 +290,7 @@ async function getSingleAdmin(req, res, next) {
     return response(res, data);
   }
 }
+
 async function deleteAdmin(req, res, next) {
   try {
 
@@ -393,7 +396,6 @@ async function validateToken(req, res, next) {
     return response(res, data);
   }
 }
-
 
 async function changePassword(req, res, next) {
   try {

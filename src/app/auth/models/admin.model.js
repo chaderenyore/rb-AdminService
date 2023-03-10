@@ -21,7 +21,7 @@ module.exports.schemas = {
   },
   role: {
     type: String,
-    enum: ["super", "admin", "support", "content", "review"]
+    enum: ["super", "admin", "support", "content-writers", "research-reviewers", "moderators"]
   },
   status: {
     type: Boolean,
