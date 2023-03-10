@@ -291,6 +291,44 @@ async function getSingleAdmin(req, res, next) {
   }
 }
 
+async function getAdminProfile(req, res, next) {
+  try {
+    const data = {
+      _id: req.user._id
+    }
+    const admin = await AdminServices.getAnAdmin(data);
+    debug(admin);
+
+    //   check if Admin exists
+    if (!admin) {
+      const data = {
+        code: HTTP.OK,
+        status: "error",
+        message: `Admin not found`,
+        data: null,
+      };
+      return await response(res, data);
+    } else {
+      // format response
+      const Data = {
+        code: 200,
+        status: "success",
+        message: `Admin Profile Retrieved`,
+        data: admin,
+      };
+      const resMessage = await response(res, Data);
+      return resMessage;
+    }
+
+  } catch (error) {
+    const data = {
+      code: HTTP.INTERNAL_SERVER,
+      status: "error",
+      message: error.message,
+    };
+    return response(res, data);
+  }
+}
 async function deleteAdmin(req, res, next) {
   try {
 
@@ -301,7 +339,7 @@ async function deleteAdmin(req, res, next) {
        //   check if Admin exists
        if (!isAdmin) {
         const data = {
-          code: HTTP.NOT_FOUND,
+          code: HTTP.OK,
           status: "error",
           message: `Admin not found`,
           data: null,
@@ -379,13 +417,13 @@ async function validateToken(req, res, next) {
       };
       return response(res, ErrData);
     } else {
-      const ErrData = {
+      const Data = {
         code: 200,
         status: "success",
         message,
         data,
       };
-      return response(res, ErrData);
+      return response(res, Data);
     }
   } catch (err) {
     const data = {
@@ -403,7 +441,7 @@ async function changePassword(req, res, next) {
     const admin = await AdminServices.getAdminById(req.params.id);
     if (!!!admin) {
       const data = {
-        code: HTTP.NOT_FOUND,
+        code: HTTP.OK,
         status: "error",
         message: `Admin not found`,
         data: null,
@@ -455,4 +493,5 @@ module.exports = {
   deleteAdmin,
   validateToken,
   logoutAdmin,
+  getAdminProfile
 };

@@ -97,6 +97,33 @@ async function getAdminById(id) {
     };
   }
 }
+
+async function getAnAdmin(query) {
+  try {
+    return await Admin.findOne(query).select("-password");
+  } catch (error) {
+    return {
+      error: true,
+      message: "Error retrieving admin",
+      data: error,
+    };
+  }
+}
+
+async function update(filter, update) {
+  try {
+    return await Admin.updateOne(filter, update, {
+      new: true,
+      lean: true,
+    }).select("-password");
+  } catch (error) {
+    return {
+      error: true,
+      message: "Error Updating admin",
+      data: error,
+    };
+  }
+}
 module.exports = {
   createAdmin,
   authenticate,
@@ -106,4 +133,6 @@ module.exports = {
   validateToken,
   changePassword,
   deleteAdmin,
+  getAnAdmin,
+  update
 };

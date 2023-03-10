@@ -10,6 +10,10 @@ module.exports = {
   getSingleAdmin: "/get-single-admin/:id",
   getAllAdmins: "/all",
 
+  // others
+
+  uploadImage: "/image",
+
 
     // admin password routes
   requestReset: "/request-reset",
