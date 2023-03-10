@@ -6,7 +6,7 @@ const AdminServices = require("../services/admin.service");
 const AccessLogsServices = require("../services/adminAccessLogs.services");
 const TokenServices = require("../services/token.services");
 const VerifyJwt = require("../../../_utils/jwt.utils").verifyJwt;
-const { roles } = require("../../../_assets/role")
+const { roles } = require("../../../_assets/role");
 const HTTP = require("../../../_helpers/httpStatusCodes");
 const response = require("../../../_helpers/responseHandler").response;
 const formatCreatAdminRes =
@@ -101,9 +101,6 @@ async function loginAdmin(req, res, next) {
       };
       return await response(res, data);
     }
-    console.log(password);
-    console.log(username);
-
     const admin = await AdminServices.authenticate(username);
     if (!admin) {
       const data = {
@@ -113,8 +110,7 @@ async function loginAdmin(req, res, next) {
         data: null,
       };
       return await response(res, data);
-    }
-    else {
+    } else {
       const result = await bcrypt.compare(password, admin.password);
       if (result) {
         const body = { _id: admin._id, role: admin.role };
@@ -124,26 +120,29 @@ async function loginAdmin(req, res, next) {
           const tokenData = {
             token,
             username,
-            isActive: true
-          }
-          const newTokenRecord = await TokenServices.createToken(tokenData)
+            isActive: true,
+          };
+          const newTokenRecord = await TokenServices.createToken(tokenData);
         }
         // update token record
         const tokenData = {
           token,
           username,
-          isActive: true
-        }
-        const UpdateTokenRecord = await TokenServices.updateToken(req.body.username, tokenData)
+          isActive: true,
+        };
+        const UpdateTokenRecord = await TokenServices.updateToken(
+          req.body.username,
+          tokenData
+        );
         //  Set login time
         admin.updated_at = Date.now();
-            // generate session id
-          const now = Date.now();
-          const session = {
-            loggedInTime: now,
-            user_id: admin._id
-          }
-          const session_id = jwt.sign({ session }, process.env.JWT_SECRET);
+        // generate session id
+        const now = Date.now();
+        const session = {
+          loggedInTime: now,
+          user_id: admin._id,
+        };
+        const session_id = jwt.sign({ session }, process.env.JWT_SECRET);
         // push login time to access logs
         // data to access logs
         let logsData = {
@@ -155,18 +154,19 @@ async function loginAdmin(req, res, next) {
           long: req.body.long || null,
           logged_in_time: now,
           role: String(admin.role),
-        }
-        const adminAccessLogs = await AccessLogsServices.createLogs(logsData)
+        };
+        const adminAccessLogs = await AccessLogsServices.createLogs(logsData);
+        console.log("Admin Access Logs", adminAccessLogs);
         // format response
         const data = await formatLoginRes(admin);
+        data.session_id = session_id;
+        data.access_token = token;
         //Send back the token to the user
         const Data = {
           code: HTTP.OK,
           status: "success",
           message: "Login Successful",
-          session_id,
           data,
-          token,
         };
         return response(res, Data);
       } else {
@@ -189,11 +189,27 @@ async function loginAdmin(req, res, next) {
     return response(res, data);
   }
 }
+
 async function logoutAdmin(req, res, next) {
   try {
-
+    //  check if session id is expired
+    const session = await AccessLogsServices.findARecord({
+      session_id: req.body.session_id,
+    });
+    console.log(req.body.session_id === session.session_id);
+    if (session && session.is_active === false) {
+      const Data = {
+        code: 200,
+        status: "error",
+        message: `Invalid/Expired Session`,
+        data: {},
+      };
+      return await response(res, Data);
+    }
     //  check if admin has logged out initially
-    const isAdmin = await TokenServices.findARecord({ username: req.body.username });
+    const isAdmin = await TokenServices.findARecord({
+      username: req.body.username,
+    });
     if (isAdmin.isActive === false) {
       const Data = {
         code: 400,
@@ -204,7 +220,7 @@ async function logoutAdmin(req, res, next) {
       return await response(res, Data);
     }
     //   check if Admin exists
-    const body = { isActive: false }
+    const body = { isActive: false };
     const admin = await TokenServices.updateToken(req.body.username, body);
     if (!admin) {
       const Data = {
@@ -217,34 +233,45 @@ async function logoutAdmin(req, res, next) {
       return await response(res, Data);
     } else {
       // decrytp session params to up-date old session records
-      const sessionPaylooa = VerifyJwt(req.body.session_id);
-      // get session 
-      const session = await AccessLogsServices.findARecord({ session_id: req.body.session_id });
+      const sessionPayload = VerifyJwt(req.body.session_id);
+      console.log("SESSION PAYLOAD ================== ", sessionPayload);
+      console.log("SESSION ", session);
       if (session) {
         // data to access logs
         const logsData = {
+          session_id: req.body.session_id,
           lat: req.body.lat || "",
           long: req.body.long || "",
           is_active: false,
           logged_out_time: Date.now(),
-          login_duration: Date.now() - session.logged_in_time
-        }
-        const adminAccessLogs = await AccessLogsServices.updateLogs(req.body.session_id, logsData)
+          login_duration: Date.now() - session.logged_in_time,
+        };
+        const adminAccessLogs = await AccessLogsServices.updateLogs(
+          req.body.session_id,
+          logsData
+        );
+        const Data = {
+          code: 200,
+          status: "success",
+          message: `You are logged Out`,
+          data: {
+            admin,
+            session_id: req.body.session_id || null,
+          },
+        };
+        return await response(res, Data);
+      } else {
+        const Data = {
+          code: 200,
+          status: "error",
+          message: `Invalid Session`,
 
+          data: {},
+        };
+        return await response(res, Data);
       }
-      const Data = {
-        code: 200,
-        status: "success",
-        message: `You are logged Out`,
-        data: {
-          admin,
-          session_id: req.body.session_id || null
-        },
-      };
-      return await response(res, Data);
     }
-  }
-  catch (error) {
+  } catch (error) {
     const data = {
       code: HTTP.INTERNAL_SERVER,
       status: "error",
@@ -253,6 +280,7 @@ async function logoutAdmin(req, res, next) {
     return response(res, data);
   }
 }
+
 async function getSingleAdmin(req, res, next) {
   try {
     const admin = await AdminServices.getAdminById(req.params.id);
@@ -278,7 +306,44 @@ async function getSingleAdmin(req, res, next) {
       const resMessage = await response(res, Data);
       return resMessage;
     }
+  } catch (error) {
+    const data = {
+      code: HTTP.INTERNAL_SERVER,
+      status: "error",
+      message: error.message,
+    };
+    return response(res, data);
+  }
+}
 
+async function getAdminProfile(req, res, next) {
+  try {
+    const data = {
+      _id: req.user._id,
+    };
+    const admin = await AdminServices.getAnAdmin(data);
+    debug(admin);
+
+    //   check if Admin exists
+    if (!admin) {
+      const data = {
+        code: HTTP.OK,
+        status: "error",
+        message: `Admin not found`,
+        data: null,
+      };
+      return await response(res, data);
+    } else {
+      // format response
+      const Data = {
+        code: 200,
+        status: "success",
+        message: `Admin Profile Retrieved`,
+        data: admin,
+      };
+      const resMessage = await response(res, Data);
+      return resMessage;
+    }
   } catch (error) {
     const data = {
       code: HTTP.INTERNAL_SERVER,
@@ -290,30 +355,29 @@ async function getSingleAdmin(req, res, next) {
 }
 async function deleteAdmin(req, res, next) {
   try {
-
     // check role of super admin
-    console.log(req.params.id)
+    console.log(req.params.id);
     const isAdmin = await AdminServices.getAdminById(String(req.params.id));
-    console.log("ADMIN ========== : ", isAdmin)
-       //   check if Admin exists
-       if (!isAdmin) {
+    console.log("ADMIN ========== : ", isAdmin);
+    //   check if Admin exists
+    if (!isAdmin) {
+      const data = {
+        code: HTTP.OK,
+        status: "error",
+        message: `Admin not found`,
+        data: null,
+      };
+      return await response(res, data);
+    } else {
+      if (isAdmin && isAdmin.role === "super") {
         const data = {
-          code: HTTP.NOT_FOUND,
+          code: HTTP.UNAUTHORIZED,
           status: "error",
-          message: `Admin not found`,
+          message: `Super Admin Cannot Be deleted`,
           data: null,
         };
         return await response(res, data);
-      } else {
-        if(isAdmin && isAdmin.role === 'super'){
-          const data = {
-            code: HTTP.UNAUTHORIZED,
-            status: "error",
-            message: `Super Admin Cannot Be deleted`,
-            data: null,
-          };
-          return await response(res, data);
-        } 
+      }
       await AdminServices.deleteAdmin(req.params.id);
       // format response
       const Data = {
@@ -325,7 +389,6 @@ async function deleteAdmin(req, res, next) {
       const resMessage = await response(res, Data);
       return resMessage;
     }
-
   } catch (error) {
     const data = {
       code: HTTP.INTERNAL_SERVER,
@@ -347,7 +410,6 @@ async function getAllAdmins(req, res, next) {
       status: "success",
       message: "All Admin retrieved",
       data,
-
     };
     const resMessage = await response(res, Data);
     return resMessage;
@@ -376,13 +438,13 @@ async function validateToken(req, res, next) {
       };
       return response(res, ErrData);
     } else {
-      const ErrData = {
+      const Data = {
         code: 200,
         status: "success",
         message,
         data,
       };
-      return response(res, ErrData);
+      return response(res, Data);
     }
   } catch (err) {
     const data = {
@@ -394,14 +456,13 @@ async function validateToken(req, res, next) {
   }
 }
 
-
 async function changePassword(req, res, next) {
   try {
     // checkif Admin exist
     const admin = await AdminServices.getAdminById(req.params.id);
     if (!!!admin) {
       const data = {
-        code: HTTP.NOT_FOUND,
+        code: HTTP.OK,
         status: "error",
         message: `Admin not found`,
         data: null,
@@ -410,9 +471,12 @@ async function changePassword(req, res, next) {
     } else {
       // hash password if it was entered
       if (req.body.password) {
-        const updatedAdmin = await AdminServices.resetPassword(req.params.id, req.body);
+        const updatedAdmin = await AdminServices.resetPassword(
+          req.params.id,
+          req.body
+        );
         debug(updatedAdmin);
-        const data = await formatCreatAdminRes(updatedAdmin)
+        const data = await formatCreatAdminRes(updatedAdmin);
         debug(data);
         const Data = {
           code: 200,
@@ -441,7 +505,6 @@ async function changePassword(req, res, next) {
     };
     return response(res, data);
   }
-
 }
 
 module.exports = {
@@ -453,4 +516,5 @@ module.exports = {
   deleteAdmin,
   validateToken,
   logoutAdmin,
+  getAdminProfile,
 };

@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const paths = require("./paths/paths");
 const AdminControllers = require("../controllers/admin.controllers");
+const AdminFileUploadController = require("../controllers/updateProfilePhoto")
 const { authorize } = require("../../middlewares/authorize");
 const validateInputs = require("../../middlewares/schema.validator");
 const signUpAdminValidator = require("../../vallidators/signup.validators");
@@ -30,26 +31,67 @@ router.post(
 
 router.get(
   paths.validateToken,
-  authorize(["super", "admin", "editor", "reviewer"]),
+  authorize([
+    "super",
+    "admin",
+    "support",
+    "content-writer",
+    "research-reviewer",
+    "moderator",
+    "account-view",
+    "account-edit"
+  ]),
   AdminControllers.validateToken
 );
 router.get(
   paths.getAllAdmins,
-  authorize(["super", "admin", "editor", "reviewer"]),
+  authorize(["super", "admin"]),
   AdminControllers.getAllAdmins
 );
 router.get(
   paths.getSingleAdmin,
-  authorize(["super", "admin", "editor", "reviewer"]),
+  authorize(["super", "admin"]),
+  validateInputs(validateSingleAdmin, "params"),
+  AdminControllers.getSingleAdmin
+);
+
+router.get(
+  paths.getSingleAdmin,
+  authorize(["super", "admin"]),
   validateInputs(validateSingleAdmin, "params"),
   AdminControllers.getSingleAdmin
 );
 
 router.put(
   paths.changePassword,
-  authorize(["super", "admin", "editor", "reviewer"]),
+  authorize([
+    "super",
+    "admin",
+    "support",
+    "content-writer",
+    "research-reviewer",
+    "moderator",
+    "account-view",
+    "account-edit",
+  ]),
   validateInputs(validateSingleAdmin, "params"),
   AdminControllers.changePassword
+);
+
+router.put(
+  paths.uploadImage,
+  authorize([
+    "super",
+    "admin",
+    "support",
+    "content-writer",
+    "research-reviewer",
+    "moderator",
+    "account-view",
+    "account-edit"
+  ]),
+  validateInputs(validateSingleAdmin, "params"),
+  AdminFileUploadController.updateProfilePicture
 );
 
 router.delete(

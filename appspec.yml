@@ -1,0 +1,18 @@
+version: 0.0
+os: linux
+files:
+  - source: /
+    destination: /home/ec2-user/services/auth/
+hooks:
+  BeforeInstall:
+    - location: scripts/before-install.sh
+      timeout: 300
+      runas: ec2-user
+  ApplicationStart:
+    - location: scripts/application-start.sh
+      timeout: 300
+      runas: ec2-user
+  # ValidateService:
+  #   - location: scripts/validate-service.sh
+  #     timeout: 300
+  #     runas: root

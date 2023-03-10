@@ -1,33 +1,42 @@
 const mongoose = require("mongoose");
 module.exports.schemas = {
   username: {
-    type: String
+    type: String,
   },
   email: {
-    type: String
+    type: String,
   },
   password: {
-    type: String
+    type: String,
   },
   created_at: {
     type: Date,
     default: Date.now,
   },
   updated_at: {
-    type: Date
+    type: Date,
   },
   image: {
     type: String,
   },
   role: {
     type: String,
-    enum: ["super", "admin", "support", "content", "review"]
+    enum: [
+      "super",
+      "admin",
+      "support",
+      "content-writer",
+      "research-reviewer",
+      "moderator",
+      "account-view",
+      "account-edit",
+    ],
   },
   status: {
     type: Boolean,
     default: true,
   },
   can_write: {
-    type: Boolean
+    type: Boolean,
   },
 };

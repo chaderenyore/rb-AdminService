@@ -2,14 +2,20 @@ exports.ROLES = {
     SUPER_Admin: "super",
     ADMIN: "admin",
     SUPPORT: "support",
-    CONTENT: "editor",
-    REVIEW: "reviewer",
+    CONTENT_WRITER: "content-writer",
+    RESEARCH_REVIEWER: "research-reviewer",
+    MODERATOR: "moderator",
+    ACCOUNT_VIEW: "account-view",
+    ACCOUNT_EDIT: "account-edit"
   };
 
   exports.roles = [
     "admin",
     "support",
-    "editor",
-    "reviewer",
+    "content-writer",
+    "research-reviewer",
+    "moderator",
+    "account-view",
+    "account-edit"
   ];
   
