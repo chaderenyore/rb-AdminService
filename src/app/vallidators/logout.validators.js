@@ -13,7 +13,7 @@ const options = {
 const logout_schema = (login) => {
   schema = Joi.object().keys({
     username: Joi.string().trim().required(),
-    session_id: Joi.string().optional(),
+    session_id: Joi.string().required(),
 
   });
   return schema.validate(login, options);
