@@ -1,9 +1,11 @@
 const debug = require("debug")("app:db");
 const mongoose = require("mongoose");
-
+require("dotenv").config();
 const HTTP = require("../_helpers/httpStatusCodes");
 const response = require("../_helpers/responseHandler").response;
 
+
+mongoose.set('strictQuery', true);
 const MONGO_OPTIONS = {
   useNewUrlParser: true,
   useUnifiedTopology: true,

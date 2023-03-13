@@ -4,7 +4,7 @@ const bcrypt = require("bcrypt");
 const VerifyJwt = require("../../../_utils/jwt.utils").verifyJwt;
 
 async function createAdmin(bodyObj) {
-  const { username, email, password, image, role, status, can_write } = bodyObj;
+  const { username, email, password, image, role, status, can_write,  added_by_username, added_by_email} = bodyObj;
   return await Admin.create({
     username,
     email,
@@ -13,6 +13,8 @@ async function createAdmin(bodyObj) {
     role,
     status,
     can_write,
+    added_by_username, 
+    added_by_email
   });
 }
 
@@ -100,7 +102,7 @@ async function getAdminById(id) {
 
 async function getAnAdmin(query) {
   try {
-    return await Admin.findOne(query).select("-password");
+    return await Admin.findOne(query).select("-password, -added_by_username, -added_by_email");
   } catch (error) {
     return {
       error: true,

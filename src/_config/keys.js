@@ -7,6 +7,9 @@ const KEYS = {
   redisPassword: process.env.REDISPASSWORD,
   requestLogger: process.env.REQUEST_LOGGER_SERVICE_URI,
   authUrl: process.env.AUTH_URL,
+  NOTIFICATION_SERVICE_URI: process.env.NOTIFICATION_SERVICE_URI,
+  ADMIN_DASHBOARD_URL: process.env.ADMIN_DASHBOARD_URL,
+  ADMIN_LOGIN_URL: process.env.ADMIN_LOGIN_URL
 };
 
 module.exports = KEYS;

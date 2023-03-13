@@ -22,9 +22,11 @@ const validate_adminSignup_schema = (admin) => {
       .valid(
         ROLES.SUPER_Admin,
         ROLES.ADMIN,
-        ROLES.CONTENT,
-        ROLES.REVIEW,
-        ROLES.SUPPORT
+        ROLES.MODERATOR,
+        ROLES.RESEARCH_REVIEWER,
+        ROLES.ACCOUNT_EDIT,
+        ROLES.ACCOUNT_VIEW,
+        ROLES.CONTENT_WRITER,
       )
       .required(),
       can_write: Joi.string().required()

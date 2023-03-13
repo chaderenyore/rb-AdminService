@@ -10,6 +10,7 @@ exports.ROLES = {
   };
 
   exports.roles = [
+    "super",
     "admin",
     "support",
     "content-writer",

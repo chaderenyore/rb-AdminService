@@ -1,3 +1,5 @@
+const axios = require("axios");
+const KEYS = require("../../../_config/keys");
 const debug = require("debug")("app:admin-controllers");
 const SECRET = process.env.JWT_SECRET;
 const jwt = require("jsonwebtoken");
@@ -18,6 +20,8 @@ const formatGetAllAdminsRes =
 
 async function registerAdmin(req, res, next) {
   try {
+    // save password to send to admin via mail
+    let mailPasword = req.body.password;
     // check if its super admin role
     if (req.body.role === "super") {
       const data = {
@@ -56,8 +60,33 @@ async function registerAdmin(req, res, next) {
         }
         // set hash to requets body pasword
         req.body.password = hash;
-        const admin = await AdminServices.createAdmin(req.body);
-        // TODO ::::::::: Send notification mail to Admin Created
+        console.log("SUPER ADMIN ============ ", req.user)
+        const dataToCreateAdmin = {
+          added_by_username:req.user.username,
+          added_by_email:req.user.email,
+          ...req.body
+        }
+        console.log(dataToCreateAdmin);
+        const admin = await AdminServices.createAdmin(dataToCreateAdmin);
+        console.log("NEW ADMIN ================== ", admin);
+        // Send notification mail to Admin Created
+        const DataToMail = {
+          email: req.body.email,
+          newAdminUsername: req.body.username,
+          role : req.body.role,
+          password: mailPasword,
+          adminUrl: KEYS.ADMIN_DASHBOARD_URL,
+          loginUrl: KEYS.ADMIN_LOGIN_URL
+        }
+        const mail = await axios.post(
+          `${KEYS.NOTIFICATION_SERVICE_URI}/notifications/v1/admin/new-admin`,
+          DataToMail,
+          {
+            headers: {
+              Authorization: `Bearer ${req.token}`,
+            },
+          }
+        );
         const data = await formatCreatAdminRes(admin);
         const Data = {
           code: HTTP.OK,
@@ -123,8 +152,20 @@ async function loginAdmin(req, res, next) {
             isActive: true,
           };
           const newTokenRecord = await TokenServices.createToken(tokenData);
+          // send login alert to super/admin for new loged in
+          const DataToMail = {
+            email:admin.added_by_email,
+            adminUsername: admin.added_by_username,
+            role: admin.role,
+            newAdminUsername: username,
+            newAdminEmail:admin.email
+          }
+        const mail = await axios.post(
+          `${KEYS.NOTIFICATION_SERVICE_URI}/notifications/v1/admin/admin-loggedin`,
+          DataToMail
+        );
         }
-        // update token record
+        // update token record for old users
         const tokenData = {
           token,
           username,
@@ -161,6 +202,23 @@ async function loginAdmin(req, res, next) {
         const data = await formatLoginRes(admin);
         data.session_id = session_id;
         data.access_token = token;
+        // sedn welcome mail
+        const DataToNewAdminWelcomeMail = {
+          email:admin.added_by_email,
+          adminUsername: admin.added_by_username,
+          role: admin.role,
+          newAdminUsername: username,
+          newAdminEmail:admin.email
+        }
+      const mail = await axios.post(
+        `${KEYS.NOTIFICATION_SERVICE_URI}/notifications/v1/admin/welcome-mail`,
+        DataToNewAdminWelcomeMail,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
         //Send back the token to the user
         const Data = {
           code: HTTP.OK,
