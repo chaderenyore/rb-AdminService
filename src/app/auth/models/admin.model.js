@@ -39,4 +39,6 @@ module.exports.schemas = {
   can_write: {
     type: Boolean,
   },
+  added_by_username: {type:String},
+  added_by_email:{type: String}
 };

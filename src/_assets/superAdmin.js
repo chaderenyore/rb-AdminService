@@ -4,6 +4,8 @@ const bcrypt = require("bcrypt");
 const salt =  bcrypt.genSaltSync(10);
 // const hash1 =  bcrypt.hashSync(process.env.SUPER_ADMIN1_PASSWORD, salt);
 const hash2 =  bcrypt.hashSync(process.env.SUPER_ADMIN2_PASSWORD, salt);
+const hash3 =  bcrypt.hashSync(process.env.SUPER_ADMIN3_PASSWORD, salt);
+
 
 
 // module.exports.SUPER_ADMIN1 = {
@@ -20,6 +22,15 @@ module.exports.SUPER_ADMIN2 = {
     email: process.env.SUPER_ADMIN2_EMAIL,
     password: hash2,
     role: process.env.SUPER_ADMIN2_ROLE,
+    status:true,
+    can_write: true
+}
+
+module.exports.SUPER_ADMIN3 = {
+    username: process.env.SUPER_ADMIN3_USERNAME,
+    email: process.env.SUPER_ADMIN3_EMAIL,
+    password: hash3,
+    role: process.env.SUPER_ADMIN3_ROLE,
     status:true,
     can_write: true
 }
