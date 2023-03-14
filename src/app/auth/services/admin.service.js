@@ -4,7 +4,17 @@ const bcrypt = require("bcrypt");
 const VerifyJwt = require("../../../_utils/jwt.utils").verifyJwt;
 
 async function createAdmin(bodyObj) {
-  const { username, email, password, image, role, status, can_write,  added_by_username, added_by_email} = bodyObj;
+  const {
+    username,
+    email,
+    password,
+    image,
+    role,
+    status,
+    can_write,
+    added_by_username,
+    added_by_email,
+  } = bodyObj;
   return await Admin.create({
     username,
     email,
@@ -13,21 +23,51 @@ async function createAdmin(bodyObj) {
     role,
     status,
     can_write,
-    added_by_username, 
-    added_by_email
+    added_by_username,
+    added_by_email,
   });
 }
 
 async function changePassword(id, data) {
   try {
-    data.password = bcrypt.hashSync(req.body.password, 10);
-    const admin = await Admin.findOneAndUpdate(
-      { _id: id },
-      { password: data.password },
-      { new: true }
-    );
-
-    return admin;
+    // compare old and new
+    if (data.old_password === data.new_password) {
+      return {
+        error: true,
+        message: "No action. Old password and new password are the same",
+        data: null,
+      };
+    } else {
+      // compare stored pasword with password in db
+      const existingAdmin = await Admin.findOne({ _id: String(id) });
+      console.log("EXISTING ADMIN", existingAdmin);
+      const passwordMatch = await bcrypt.compare(
+        data.old_password,
+        existingAdmin.password
+      );
+      console.log("pasword Match ============= ", passwordMatch)
+      if (!passwordMatch) {
+        return {
+          error: true,
+          message: "Old password is invalid",
+          data: null,
+        };
+      } else {
+        const salt = await bcrypt.genSaltSync(10);
+        const newPassword = await bcrypt.hashSync(data.new_password, salt);
+        const updatedAdmin = await Admin.findOneAndUpdate(
+          { _id: id },
+          { password: newPassword },
+          { new: true }
+        );
+        console.log("UPDATED ADMIN ============== ", updatedAdmin)
+        return {
+          error: false,
+          message: "Password Changed SUccessfully",
+          data: updatedAdmin,
+        };
+      }
+    }
   } catch (error) {
     return {
       error: true,
@@ -51,7 +91,7 @@ async function authenticate(username) {
   return await Admin.findOne({ username: username });
 }
 async function getAllAdmins() {
-  return await Admin.find({}).select('-password');
+  return await Admin.find({}).select("-password");
 }
 
 async function validateToken(token) {
@@ -102,7 +142,9 @@ async function getAdminById(id) {
 
 async function getAnAdmin(query) {
   try {
-    return await Admin.findOne(query).select("-password, -added_by_username, -added_by_email");
+    return await Admin.findOne(query).select(
+      "-password, -added_by_username, -added_by_email"
+    );
   } catch (error) {
     return {
       error: true,
@@ -136,5 +178,5 @@ module.exports = {
   changePassword,
   deleteAdmin,
   getAnAdmin,
-  update
+  update,
 };

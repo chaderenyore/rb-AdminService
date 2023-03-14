@@ -7,7 +7,8 @@ module.exports = {
   // superAdmin
   signUp: "/signup",
   deleteAdmin: "/delete-admin/:id",
-  getSingleAdmin: "/get-single-admin/:id",
+  getSingleAdmin: "/single-admin/:id",
+  getAdminProfile: "/admin-profile",
   getAllAdmins: "/all",
 
   // others
