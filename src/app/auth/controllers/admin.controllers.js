@@ -60,12 +60,12 @@ async function registerAdmin(req, res, next) {
         }
         // set hash to requets body pasword
         req.body.password = hash;
-        console.log("SUPER ADMIN ============ ", req.user)
+        console.log("SUPER ADMIN ============ ", req.user);
         const dataToCreateAdmin = {
-          added_by_username:req.user.username,
-          added_by_email:req.user.email,
-          ...req.body
-        }
+          added_by_username: req.user.username,
+          added_by_email: req.user.email,
+          ...req.body,
+        };
         console.log(dataToCreateAdmin);
         const admin = await AdminServices.createAdmin(dataToCreateAdmin);
         console.log("NEW ADMIN ================== ", admin);
@@ -73,11 +73,11 @@ async function registerAdmin(req, res, next) {
         const DataToMail = {
           email: req.body.email,
           newAdminUsername: req.body.username,
-          role : req.body.role,
+          role: req.body.role,
           password: mailPasword,
           adminUrl: KEYS.ADMIN_DASHBOARD_URL,
-          loginUrl: KEYS.ADMIN_LOGIN_URL
-        }
+          loginUrl: KEYS.ADMIN_LOGIN_URL,
+        };
         const mail = await axios.post(
           `${KEYS.NOTIFICATION_SERVICE_URI}/notifications/v1/admin/new-admin`,
           DataToMail,
@@ -116,6 +116,7 @@ async function registerAdmin(req, res, next) {
 
 async function loginAdmin(req, res, next) {
   try {
+    let tokenDataForNewAdmin;
     let username = req.body.username;
     let password = req.body.password;
 
@@ -129,112 +130,121 @@ async function loginAdmin(req, res, next) {
         data: null,
       };
       return await response(res, data);
-    }
-    const admin = await AdminServices.authenticate(username);
-    if (!admin) {
-      const data = {
-        code: HTTP.BAD_REQUEST,
-        status: "error",
-        message: `Admin with username: ${req.body.username} doesnt exists`,
-        data: null,
-      };
-      return await response(res, data);
     } else {
-      const result = await bcrypt.compare(password, admin.password);
-      if (result) {
-        const body = { _id: admin._id, role: admin.role };
-        const token = jwt.sign({ admin: body }, process.env.JWT_SECRET);
-        // Create Token Record For first time users
-        if (!isLoggedIn) {
+      const admin = await AdminServices.authenticate(username);
+      if (!admin) {
+        const data = {
+          code: HTTP.BAD_REQUEST,
+          status: "error",
+          message: `Admin with username: ${req.body.username} doesnt exists`,
+          data: null,
+        };
+        return await response(res, data);
+      } else {
+        const result = await bcrypt.compare(password, admin.password);
+        if (result) {
+          const body = { _id: admin._id, role: admin.role };
+          const token = jwt.sign({ admin: body }, process.env.JWT_SECRET);
+          // Create Token Record For first time users
+          console.log("ISLOGGED IN  +===========  ", isLoggedIn);
+          if (!isLoggedIn && admin.role !== "super") {
+            tokenDataForNewAdmin = {
+              token,
+              username,
+              isActive: true,
+            };
+            const newTokenRecord = await TokenServices.createToken(
+              tokenDataForNewAdmin
+            );
+          }
+
+          if (tokenDataForNewAdmin) {
+            // send login alert to super/admin for new loged in
+            const DataToMail = {
+              email: admin.added_by_email,
+              adminUsername: admin.added_by_username,
+              role: admin.role,
+              newAdminUsername: username,
+              newAdminEmail: admin.email,
+            };
+            const mail = await axios.post(
+              `${KEYS.NOTIFICATION_SERVICE_URI}/notifications/v1/admin/admin-loggedin`,
+              DataToMail
+            );
+            // send welcome mail
+            const DataToNewAdminWelcomeMail = {
+              email: admin.email,
+              adminUsername: admin.username,
+              role: admin.role,
+              newAdminUsername: username,
+              newAdminEmail: admin.email,
+            };
+            const welcomeMail = await axios.post(
+              `${KEYS.NOTIFICATION_SERVICE_URI}/notifications/v1/admin/welcome-mail`,
+              DataToNewAdminWelcomeMail,
+              {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              }
+            );
+          }
+
+          // update token record for old users
           const tokenData = {
             token,
             username,
             isActive: true,
           };
-          const newTokenRecord = await TokenServices.createToken(tokenData);
-          // send login alert to super/admin for new loged in
-          const DataToMail = {
-            email:admin.added_by_email,
-            adminUsername: admin.added_by_username,
-            role: admin.role,
-            newAdminUsername: username,
-            newAdminEmail:admin.email
-          }
-        const mail = await axios.post(
-          `${KEYS.NOTIFICATION_SERVICE_URI}/notifications/v1/admin/admin-loggedin`,
-          DataToMail
-        );
+          const UpdateTokenRecord = await TokenServices.updateToken(
+            req.body.username,
+            tokenData
+          );
+          //  Set login time
+          admin.updated_at = Date.now();
+          // generate session id
+          const now = Date.now();
+          const session = {
+            loggedInTime: now,
+            user_id: admin._id,
+          };
+          const session_id = jwt.sign({ session }, process.env.JWT_SECRET);
+          // push login time to access logs
+          // data to access logs
+          let logsData = {
+            session_id,
+            admin_id: String(admin._id),
+            email: String(admin.email),
+            is_active: true,
+            lat: req.body.lat || null,
+            long: req.body.long || null,
+            logged_in_time: now,
+            role: String(admin.role),
+          };
+          const adminAccessLogs = await AccessLogsServices.createLogs(logsData);
+          console.log("Admin Access Logs", adminAccessLogs);
+          // format response
+          const data = await formatLoginRes(admin);
+          data.session_id = session_id;
+          data.access_token = token;
+
+          //Send back the token to the user
+          const Data = {
+            code: HTTP.OK,
+            status: "success",
+            message: "Login Successful",
+            data,
+          };
+          return response(res, Data);
+        } else {
+          const data = {
+            code: HTTP.UNAUTHORIZED,
+            status: "error",
+            message: "password/Email incorrect",
+            data: null,
+          };
+          return response(res, data);
         }
-        // update token record for old users
-        const tokenData = {
-          token,
-          username,
-          isActive: true,
-        };
-        const UpdateTokenRecord = await TokenServices.updateToken(
-          req.body.username,
-          tokenData
-        );
-        //  Set login time
-        admin.updated_at = Date.now();
-        // generate session id
-        const now = Date.now();
-        const session = {
-          loggedInTime: now,
-          user_id: admin._id,
-        };
-        const session_id = jwt.sign({ session }, process.env.JWT_SECRET);
-        // push login time to access logs
-        // data to access logs
-        let logsData = {
-          session_id,
-          admin_id: String(admin._id),
-          email: String(admin.email),
-          is_active: true,
-          lat: req.body.lat || null,
-          long: req.body.long || null,
-          logged_in_time: now,
-          role: String(admin.role),
-        };
-        const adminAccessLogs = await AccessLogsServices.createLogs(logsData);
-        console.log("Admin Access Logs", adminAccessLogs);
-        // format response
-        const data = await formatLoginRes(admin);
-        data.session_id = session_id;
-        data.access_token = token;
-        // sedn welcome mail
-        const DataToNewAdminWelcomeMail = {
-          email:admin.added_by_email,
-          adminUsername: admin.added_by_username,
-          role: admin.role,
-          newAdminUsername: username,
-          newAdminEmail:admin.email
-        }
-      const mail = await axios.post(
-        `${KEYS.NOTIFICATION_SERVICE_URI}/notifications/v1/admin/welcome-mail`,
-        DataToNewAdminWelcomeMail,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-        //Send back the token to the user
-        const Data = {
-          code: HTTP.OK,
-          status: "success",
-          message: "Login Successful",
-          data,
-        };
-        return response(res, Data);
-      } else {
-        const data = {
-          code: HTTP.UNAUTHORIZED,
-          status: "error",
-          message: "password incorrect",
-          data: null,
-        };
-        return response(res, data);
       }
     }
   } catch (error) {
@@ -250,11 +260,14 @@ async function loginAdmin(req, res, next) {
 
 async function logoutAdmin(req, res, next) {
   try {
+    // store tokendata
+    let tokenData;
     //  check if session id is expired
     const session = await AccessLogsServices.findARecord({
       session_id: req.body.session_id,
     });
-    console.log(req.body.session_id === session.session_id);
+    console.log("SESSION +=====================", session);
+    // console.log(req.body.session_id === session.session_id);
     if (session && session.is_active === false) {
       const Data = {
         code: 200,
@@ -263,71 +276,55 @@ async function logoutAdmin(req, res, next) {
         data: {},
       };
       return await response(res, Data);
-    }
-    //  check if admin has logged out initially
-    const isAdmin = await TokenServices.findARecord({
-      username: req.body.username,
-    });
-    if (isAdmin.isActive === false) {
-      const Data = {
-        code: 400,
-        status: "error",
-        message: `Admin has Already Logged Out`,
-        data: {},
-      };
-      return await response(res, Data);
-    }
-    //   check if Admin exists
-    const body = { isActive: false };
-    const admin = await TokenServices.updateToken(req.body.username, body);
-    if (!admin) {
-      const Data = {
-        code: 200,
-        status: "error",
-        message: `Admin Does not Exist`,
-
-        data: {},
-      };
-      return await response(res, Data);
     } else {
-      // decrytp session params to up-date old session records
-      const sessionPayload = VerifyJwt(req.body.session_id);
-      console.log("SESSION PAYLOAD ================== ", sessionPayload);
-      console.log("SESSION ", session);
-      if (session) {
-        // data to access logs
-        const logsData = {
-          session_id: req.body.session_id,
-          lat: req.body.lat || "",
-          long: req.body.long || "",
-          is_active: false,
-          logged_out_time: Date.now(),
-          login_duration: Date.now() - session.logged_in_time,
-        };
-        const adminAccessLogs = await AccessLogsServices.updateLogs(
-          req.body.session_id,
-          logsData
-        );
+      //  check if admin has logged out initially
+      const isAdmin = await TokenServices.findARecord({
+        username: req.body.username,
+      });
+      if (isAdmin && isAdmin.isActive === false) {
         const Data = {
-          code: 200,
-          status: "success",
-          message: `You are logged Out`,
-          data: {
-            admin,
-            session_id: req.body.session_id || null,
-          },
-        };
-        return await response(res, Data);
-      } else {
-        const Data = {
-          code: 200,
+          code: 400,
           status: "error",
-          message: `Invalid Session`,
-
+          message: `Admin has Already Logged Out`,
           data: {},
         };
         return await response(res, Data);
       }
+      //   check if Admin exists
+      const body = { isActive: false };
+      const admin = await TokenServices.updateToken(req.body.username, body);
+      if (!admin) {
+        // create token record
+        tokenData = {
+          token: "",
+          username: req.body.username,
+          isActive: false,
+        };
+        const newTokenRecord = await TokenServices.createToken(tokenData);
+      }
+      // data to access logs
+      const logsData = {
+        session_id: req.body.session_id,
+        lat: req.body.lat || "",
+        long: req.body.long || "",
+        is_active: false,
+        logged_out_time: Date.now(),
+        login_duration: Date.now() - session.logged_in_time,
+      };
+      const adminAccessLogs = await AccessLogsServices.updateLogs(
+        req.body.session_id,
+        logsData
+      );
+      const Data = {
+        code: 200,
+        status: "success",
+        message: `You are logged Out`,
+        data: {
+          admin,
+          session_id: req.body.session_id || null,
+        },
+      };
+      return await response(res, Data);
     }
   } catch (error) {
     const data = {
@@ -377,7 +374,7 @@ async function getSingleAdmin(req, res, next) {
 async function getAdminProfile(req, res, next) {
   try {
     const data = {
-      _id: req.user._id,
+      _id: req.user.admin_id,
     };
     const admin = await AdminServices.getAnAdmin(data);
     debug(admin);
@@ -527,32 +524,50 @@ async function changePassword(req, res, next) {
       };
       return await response(res, data);
     } else {
-      // hash password if it was entered
-      if (req.body.password) {
-        const updatedAdmin = await AdminServices.resetPassword(
+      if (String(admin._id) !== String(req.user.admin_id)) {
+        const data = {
+          code: HTTP.OK,
+          status: "error",
+          message: `You Are Attempting to Change ANother Admins Password`,
+          data: null,
+        };
+        return await response(res, data);
+      }
+      if (admin.role === "super") {
+        const data = {
+          code: HTTP.OK,
+          status: "error",
+          message: `Cannot Change the Password of A Super Admin`,
+          data: null,
+        };
+        return await response(res, data);
+      } else {
+        // hash password if it was entered
+        const { error, message, data } = await AdminServices.changePassword(
           req.params.id,
           req.body
         );
-        debug(updatedAdmin);
-        const data = await formatCreatAdminRes(updatedAdmin);
-        debug(data);
-        const Data = {
-          code: 200,
-          status: "success",
-          message: `${admin.username} your password was updated successfully`,
-          data,
-        };
-        const resMessage = await response(res, Data);
-        return resMessage;
-      } else {
-        const Data = {
-          code: 403,
-          status: "error",
-          message: `please input a password to reset`,
-          data: null,
-        };
-        const resMessage = await response(res, Data);
-        return resMessage;
+        if (error) {
+          const Data = {
+            code: HTTP.OK,
+            status: "error",
+            message,
+            data,
+          };
+          return response(res, Data);
+        } else {
+          debug(data);
+          const resData = await formatCreatAdminRes(data);
+          debug(resData);
+          const Data = {
+            code: 200,
+            status: "success",
+            message: `${admin.username} your password was updated successfully`,
+            data,
+          };
+          const resMessage = await response(res, Data);
+          return resMessage;
+        }
       }
     }
   } catch (err) {

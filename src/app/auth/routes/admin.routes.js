@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const paths = require("./paths/paths");
 const AdminControllers = require("../controllers/admin.controllers");
-const AdminFileUploadController = require("../controllers/updateProfilePhoto")
+const AdminFileUploadController = require("../controllers/updateProfilePhoto");
 const { authorize } = require("../../middlewares/authorize");
 const validateInputs = require("../../middlewares/schema.validator");
 const signUpAdminValidator = require("../../vallidators/signup.validators");
@@ -10,6 +10,7 @@ const loginAdminValidator = require("../../vallidators/login.validators");
 const logoutAdminValidator = require("../../vallidators/logout.validators");
 const validateTokenValidator = require("../../vallidators/token.validators");
 const validateSingleAdmin = require("../../vallidators/singleAdmin.validators");
+const changePaswordValidator = require("../../vallidators/changePassword.validator");
 
 router.post(
   paths.signUp,
@@ -39,13 +40,13 @@ router.get(
     "research-reviewer",
     "moderator",
     "account-view",
-    "account-edit"
+    "account-edit",
   ]),
   AdminControllers.validateToken
 );
 router.get(
   paths.getAllAdmins,
-  authorize(["super", "admin"]),
+  authorize(["super"]),
   AdminControllers.getAllAdmins
 );
 router.get(
@@ -56,10 +57,18 @@ router.get(
 );
 
 router.get(
-  paths.getSingleAdmin,
-  authorize(["super", "admin"]),
-  validateInputs(validateSingleAdmin, "params"),
-  AdminControllers.getSingleAdmin
+  paths.getAdminProfile,
+  authorize([
+    "super",
+    "admin",
+    "support",
+    "content-writer",
+    "research-reviewer",
+    "moderator",
+    "account-view",
+    "account-edit",
+  ]),
+  AdminControllers.getAdminProfile
 );
 
 router.put(
@@ -75,6 +84,7 @@ router.put(
     "account-edit",
   ]),
   validateInputs(validateSingleAdmin, "params"),
+  validateInputs(changePaswordValidator, "body"),
   AdminControllers.changePassword
 );
 
@@ -88,7 +98,7 @@ router.put(
     "research-reviewer",
     "moderator",
     "account-view",
-    "account-edit"
+    "account-edit",
   ]),
   validateInputs(validateSingleAdmin, "params"),
   AdminFileUploadController.updateProfilePicture
