@@ -267,6 +267,15 @@ async function logoutAdmin(req, res, next) {
       session_id: req.body.session_id,
     });
     console.log("SESSION +=====================", session);
+    if(!session) {
+      const Data = {
+        code: 200,
+        status: "error",
+        message: `Invalid/Expired Session`,
+        data: {},
+      };
+      return await response(res, Data);
+    }
     // console.log(req.body.session_id === session.session_id);
     if (session && session.is_active === false) {
       const Data = {
@@ -276,7 +285,7 @@ async function logoutAdmin(req, res, next) {
         data: {},
       };
       return await response(res, Data);
-    } else {
+    } 
       //  check if admin has logged out initially
       const isAdmin = await TokenServices.findARecord({
         username: req.body.username,
@@ -309,7 +318,7 @@ async function logoutAdmin(req, res, next) {
         long: req.body.long || "",
         is_active: false,
         logged_out_time: Date.now(),
-        login_duration: Date.now() - session.logged_in_time,
+        login_duration: session ?  Date.now() - session.logged_in_time : "",
       };
       const adminAccessLogs = await AccessLogsServices.updateLogs(
         req.body.session_id,
@@ -325,7 +334,7 @@ async function logoutAdmin(req, res, next) {
         },
       };
       return await response(res, Data);
-    }
+  
   } catch (error) {
     const data = {
       code: HTTP.INTERNAL_SERVER,
