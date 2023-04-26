@@ -4,7 +4,6 @@ var cors = require("cors");
 const app = express();
 const morgan = require("morgan");
 app.use(helmet());
-
 // loggers config starts here
 const requestLogger = require("./app/middlewares/request.logger");
 // app.use(requestLogger);
