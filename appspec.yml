@@ -2,7 +2,7 @@ version: 0.0
 os: linux
 files:
   - source: /
-    destination: /home/ec2-user/services/auth/
+    destination: /home/ec2-user/services/Notifications/
 hooks:
   BeforeInstall:
     - location: scripts/before-install.sh
