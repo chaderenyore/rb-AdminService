@@ -119,46 +119,107 @@ async function loginAdmin(req, res, next) {
     let tokenDataForNewAdmin;
     let username = req.body.username;
     let password = req.body.password;
-
-    // check if token is active
-    const isLoggedIn = await TokenServices.findARecord({ username: username });
-    if (isLoggedIn && isLoggedIn.isActive === true) {
+    // ?check if admin exists
+    const admin = await AdminServices.authenticate(username);
+    if (!admin) {
       const data = {
         code: HTTP.BAD_REQUEST,
         status: "error",
-        message: `You're Loggged In Another Device`,
+        message: `Admin with username: ${req.body.username} doesnt exists`,
         data: null,
       };
       return await response(res, data);
     } else {
-      const admin = await AdminServices.authenticate(username);
-      if (!admin) {
+      // check if token is active
+      const isLoggedIn = await TokenServices.findARecord({
+        username: username,
+      });
+      if (isLoggedIn && isLoggedIn.isActive === true) {
         const data = {
           code: HTTP.BAD_REQUEST,
           status: "error",
-          message: `Admin with username: ${req.body.username} doesnt exists`,
+          message: `You're Loggged In Another Device`,
           data: null,
         };
         return await response(res, data);
+      } else if (isLoggedIn && isLoggedIn.isActive === false) {
+        // ?compare password
+        const result = await bcrypt.compare(password, admin.password);
+        if (result) {
+          // update token record for old users
+          const body = { _id: admin._id, role: admin.role };
+          const token = jwt.sign({ admin: body }, process.env.JWT_SECRET);
+          const tokenData = {
+            token,
+            username,
+            isActive: true,
+          };
+          const UpdateTokenRecord = await TokenServices.updateToken(
+            req.body.username,
+            tokenData
+          );
+          console.log("UODATED TOKEN ====== ", UpdateTokenRecord);
+          //  Set login time
+          admin.updated_at = Date.now();
+          // generate session id
+          const now = Date.now();
+          const session = {
+            loggedInTime: now,
+            user_id: admin._id,
+          };
+          const session_id = jwt.sign({ session }, process.env.JWT_SECRET);
+          // push login time to access logs
+          // data to access logs
+          let logsData = {
+            session_id,
+            admin_id: String(admin._id),
+            email: String(admin.email),
+            is_active: true,
+            lat: req.body.lat || null,
+            long: req.body.long || null,
+            logged_in_time: now,
+            role: String(admin.role),
+          };
+          const adminAccessLogs = await AccessLogsServices.createLogs(logsData);
+          // format response
+          const data = await formatLoginRes(admin);
+          data.session_id = session_id;
+          data.access_token = token;
+
+          //Send back the token to the user
+          const Data = {
+            code: HTTP.OK,
+            status: "success",
+            message: "Login Successful",
+            data,
+          };
+          return response(res, Data);
+        } else {
+          const data = {
+            code: HTTP.UNAUTHORIZED,
+            status: "error",
+            message: "password/Email incorrect",
+            data: null,
+          };
+          return response(res, data);
+        }
       } else {
         const result = await bcrypt.compare(password, admin.password);
         if (result) {
           const body = { _id: admin._id, role: admin.role };
           const token = jwt.sign({ admin: body }, process.env.JWT_SECRET);
           // Create Token Record For first time users
-          console.log("ISLOGGED IN  +===========  ", isLoggedIn);
-          if (!isLoggedIn && admin.role !== "super") {
-            tokenDataForNewAdmin = {
-              token,
-              username,
-              isActive: true,
-            };
-            const newTokenRecord = await TokenServices.createToken(
-              tokenDataForNewAdmin
-            );
-          }
+          tokenDataForNewAdmin = {
+            token,
+            username,
+            isActive: true,
+          };
+          const newTokenRecord = await TokenServices.createToken(
+            tokenDataForNewAdmin
+          );
+          console.log("TOKEN ===== ", newTokenRecord);
 
-          if (tokenDataForNewAdmin) {
+          if (admin.role !== "super") {
             // send login alert to super/admin for new loged in
             const DataToMail = {
               email: admin.added_by_email,
@@ -189,19 +250,6 @@ async function loginAdmin(req, res, next) {
               }
             );
           }
-
-          // update token record for old users
-          const tokenData = {
-            token,
-            username,
-            isActive: true,
-          };
-          const UpdateTokenRecord = await TokenServices.updateToken(
-            req.body.username,
-            tokenData
-          );
-          //  Set login time
-          admin.updated_at = Date.now();
           // generate session id
           const now = Date.now();
           const session = {
@@ -222,7 +270,6 @@ async function loginAdmin(req, res, next) {
             role: String(admin.role),
           };
           const adminAccessLogs = await AccessLogsServices.createLogs(logsData);
-          console.log("Admin Access Logs", adminAccessLogs);
           // format response
           const data = await formatLoginRes(admin);
           data.session_id = session_id;
@@ -267,7 +314,7 @@ async function logoutAdmin(req, res, next) {
       session_id: req.body.session_id,
     });
     console.log("SESSION +=====================", session);
-    if(!session) {
+    if (!session) {
       const Data = {
         code: 200,
         status: "error",
@@ -285,56 +332,55 @@ async function logoutAdmin(req, res, next) {
         data: {},
       };
       return await response(res, Data);
-    } 
-      //  check if admin has logged out initially
-      const isAdmin = await TokenServices.findARecord({
-        username: req.body.username,
-      });
-      if (isAdmin && isAdmin.isActive === false) {
-        const Data = {
-          code: 400,
-          status: "error",
-          message: `Admin has Already Logged Out`,
-          data: {},
-        };
-        return await response(res, Data);
-      }
-      //   check if Admin exists
-      const body = { isActive: false };
-      const admin = await TokenServices.updateToken(req.body.username, body);
-      if (!admin) {
-        // create token record
-        tokenData = {
-          token: "",
-          username: req.body.username,
-          isActive: false,
-        };
-        const newTokenRecord = await TokenServices.createToken(tokenData);
-      }
-      // data to access logs
-      const logsData = {
-        session_id: req.body.session_id,
-        lat: req.body.lat || "",
-        long: req.body.long || "",
-        is_active: false,
-        logged_out_time: Date.now(),
-        login_duration: session ?  Date.now() - session.logged_in_time : "",
-      };
-      const adminAccessLogs = await AccessLogsServices.updateLogs(
-        req.body.session_id,
-        logsData
-      );
+    }
+    //  check if admin has logged out initially
+    const isAdmin = await TokenServices.findARecord({
+      username: req.body.username,
+    });
+    if (isAdmin && isAdmin.isActive === false) {
       const Data = {
-        code: 200,
-        status: "success",
-        message: `You are logged Out`,
-        data: {
-          admin,
-          session_id: req.body.session_id || null,
-        },
+        code: 400,
+        status: "error",
+        message: `Admin has Already Logged Out`,
+        data: {},
       };
       return await response(res, Data);
-  
+    }
+    //   check if Admin exists
+    const body = { isActive: false };
+    const admin = await TokenServices.updateToken(req.body.username, body);
+    if (!admin) {
+      // create token record
+      tokenData = {
+        token: "",
+        username: req.body.username,
+        isActive: false,
+      };
+      const newTokenRecord = await TokenServices.createToken(tokenData);
+    }
+    // data to access logs
+    const logsData = {
+      session_id: req.body.session_id,
+      lat: req.body.lat || "",
+      long: req.body.long || "",
+      is_active: false,
+      logged_out_time: Date.now(),
+      login_duration: session ? Date.now() - session.logged_in_time : "",
+    };
+    const adminAccessLogs = await AccessLogsServices.updateLogs(
+      req.body.session_id,
+      logsData
+    );
+    const Data = {
+      code: 200,
+      status: "success",
+      message: `You are logged Out`,
+      data: {
+        admin,
+        session_id: req.body.session_id || null,
+      },
+    };
+    return await response(res, Data);
   } catch (error) {
     const data = {
       code: HTTP.INTERNAL_SERVER,

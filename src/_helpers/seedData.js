@@ -7,6 +7,7 @@ const debug = require("debug")("app:seedAdmin");
 
  async function seedData() {
   try {
+    // const admin2 =  await Admin.deleteMany({});
     // search if super admin already exists
     const admins = await Admin.find({role: "super" });
     if ( admins.length !== 0) {
@@ -18,7 +19,7 @@ const debug = require("debug")("app:seedAdmin");
         const admin3 =  await Admin.create(superAdmin3);
         // debug(admin1);
         console.log(admin3);
-        debug(admin2);
+        console.log(admin2);
         return {
           // admin1,
           admin2,
