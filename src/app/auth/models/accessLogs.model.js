@@ -3,6 +3,12 @@ module.exports.schemas = {
   session_id: {
     type: String,
   },
+  access_token: {
+    type: String,
+  },
+  username: {
+    type: String,
+  },
   admin_id: {
     type: String,
   },

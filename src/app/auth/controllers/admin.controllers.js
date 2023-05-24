@@ -134,15 +134,28 @@ async function loginAdmin(req, res, next) {
       const isLoggedIn = await TokenServices.findARecord({
         username: username,
       });
-      if (isLoggedIn && isLoggedIn.isActive === true) {
-        const data = {
-          code: HTTP.BAD_REQUEST,
-          status: "error",
-          message: `You're Loggged In Another Device`,
-          data: null,
-        };
-        return await response(res, data);
-      } else if (isLoggedIn && isLoggedIn.isActive === false) {
+      if (isLoggedIn) {
+        console.log("IS LOGGED IN ======== ", isLoggedIn);
+        console.log("IS LOGGED IS ACTIVE  ======== ", isLoggedIn.isActive);
+
+        if (isLoggedIn.isActive) {
+          // search for session 
+          const session = await AccessLogsServices.findARecord({is_active: true});
+          // data to access logs
+          const updateData = {
+            is_active: false,
+            logged_out_time: Date.now(),
+            login_duration: session ? Date.now() - session.logged_in_time : "",
+          };
+          const filterData = {
+            is_active: false
+          }
+          const adminAccessLogs = await AccessLogsServices.updateLogs(
+            session.session_id,
+            updateData
+          );
+          console.log("ADMIN LOGS FOR SECOD LOGIN ===== ", adminAccessLogs)
+        }
         // ?compare password
         const result = await bcrypt.compare(password, admin.password);
         if (result) {
@@ -158,7 +171,6 @@ async function loginAdmin(req, res, next) {
             req.body.username,
             tokenData
           );
-          console.log("UODATED TOKEN ====== ", UpdateTokenRecord);
           //  Set login time
           admin.updated_at = Date.now();
           // generate session id
@@ -172,6 +184,7 @@ async function loginAdmin(req, res, next) {
           // data to access logs
           let logsData = {
             session_id,
+            access_token: token,
             admin_id: String(admin._id),
             email: String(admin.email),
             is_active: true,
@@ -211,6 +224,7 @@ async function loginAdmin(req, res, next) {
           // Create Token Record For first time users
           tokenDataForNewAdmin = {
             token,
+            admin_id: admin._id,
             username,
             isActive: true,
           };
@@ -261,6 +275,8 @@ async function loginAdmin(req, res, next) {
           // data to access logs
           let logsData = {
             session_id,
+            access_token:token,
+            username,
             admin_id: String(admin._id),
             email: String(admin.email),
             is_active: true,
@@ -311,14 +327,23 @@ async function logoutAdmin(req, res, next) {
     let tokenData;
     //  check if session id is expired
     const session = await AccessLogsServices.findARecord({
-      session_id: req.body.session_id,
+      session_id: req.body.session_id
     });
-    console.log("SESSION +=====================", session);
+    console.log("SESSION ====== ", session)
     if (!session) {
       const Data = {
         code: 200,
         status: "error",
         message: `Invalid/Expired Session`,
+        data: {},
+      };
+      return await response(res, Data);
+    }
+    if(session.access_token !== req.token){
+      const Data = {
+        code: 200,
+        status: "error",
+        message: `Invalid/Expired Session UnEqual`,
         data: {},
       };
       return await response(res, Data);
@@ -360,7 +385,6 @@ async function logoutAdmin(req, res, next) {
     }
     // data to access logs
     const logsData = {
-      session_id: req.body.session_id,
       lat: req.body.lat || "",
       long: req.body.long || "",
       is_active: false,
@@ -513,13 +537,13 @@ async function getAllAdmins(req, res, next) {
   try {
     const admins = await AdminServices.getAllAdmins();
     // format response
-    const data = await formatGetAllAdminsRes(admins);
+    // const data = await formatGetAllAdminsRes(admins);
 
     const Data = {
       code: 200,
       status: "success",
       message: "All Admin retrieved",
-      data,
+      data: admins,
     };
     const resMessage = await response(res, Data);
     return resMessage;

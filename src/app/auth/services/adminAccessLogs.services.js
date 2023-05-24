@@ -24,6 +24,24 @@ async function updateLogs(session_id, data) {
   }
 }
 
+async function updateMany(filter, data) {
+  try {
+    const accessLogs = await AccessLog.updateMany(
+      filter,
+      data,
+      { new: true }
+    );
+
+    return accessLogs;
+  } catch (error) {
+    return {
+      error: true,
+      message: "Error updating  AccessLogs",
+      data: error,
+    };
+  }
+}
+
 async function deleteRecords(data) {
   return await  AccessLog.deleteOne(data);
 }
@@ -51,6 +69,7 @@ async function deleteMany(data) {
 module.exports = {
   createLogs,
   updateLogs,
+  updateMany,
   deleteMany,
   findAll,
   deleteRecords,

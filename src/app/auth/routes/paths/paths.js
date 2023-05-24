@@ -25,5 +25,11 @@ module.exports = {
   getSingleAdminAccessLogs: "/logs/:admin_id",
   deletAdminAccessLogs: "/admin-logs",
   getAllAccessLogs: "/admin-logs",
+
+  // advert routes
+  postAdverts: "/advert",
+  adminFetchAllAds: "/advert/all",
+  deleteAdvert: "/advert",
+  UserViewAllAds: "/advert/user"
   };
   

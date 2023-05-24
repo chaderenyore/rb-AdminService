@@ -26,6 +26,16 @@ router.post(
 
 router.post(
   paths.logout,
+  authorize([
+    "super",
+    "admin",
+    "support",
+    "content-writer",
+    "research-reviewer",
+    "moderator",
+    "account-view",
+    "account-edit",
+  ]),
   validateInputs(logoutAdminValidator, "body"),
   AdminControllers.logoutAdmin
 );

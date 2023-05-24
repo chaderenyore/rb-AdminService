@@ -1,5 +1,5 @@
 const debug = require("debug")("app:admin-services");
-const { Admin } = require("../models");
+const { Admin, Token } = require("../models");
 const bcrypt = require("bcrypt");
 const VerifyJwt = require("../../../_utils/jwt.utils").verifyJwt;
 
@@ -45,7 +45,7 @@ async function changePassword(id, data) {
         data.old_password,
         existingAdmin.password
       );
-      console.log("pasword Match ============= ", passwordMatch)
+      console.log("pasword Match ============= ", passwordMatch);
       if (!passwordMatch) {
         return {
           error: true,
@@ -60,7 +60,7 @@ async function changePassword(id, data) {
           { password: newPassword },
           { new: true }
         );
-        console.log("UPDATED ADMIN ============== ", updatedAdmin)
+        console.log("UPDATED ADMIN ============== ", updatedAdmin);
         return {
           error: false,
           message: "Password Changed SUccessfully",
@@ -96,28 +96,47 @@ async function getAllAdmins() {
 
 async function validateToken(token) {
   try {
-    const adminPayload = VerifyJwt(token);
-    console.log("AdminPayload: ", adminPayload);
-    if (adminPayload) {
-      const admin = await Admin.findOne({ _id: adminPayload.admin._id });
+    // check if token is equal to token in record
+    const previousToken = await Token.findOne({token});
+    console.log("TOKEN ======= ", token);
+    console.log("PREVIOUS TOKEN RECORD ======= ", previousToken);
+    if (!previousToken) {
       return {
-        error: !admin,
-        message: !admin ? "Expired token" : "Token is valid",
-        data: {
-          status: !!admin,
-          admin_id: admin._id,
-          admin_role: admin.role,
-          username: admin.username,
-          email: admin.email,
-        },
+        error: true,
+        message: "Logged Out",
+        data: null
       };
-    } else {
+    } else if (previousToken && previousToken.isActive === false) {
       return {
         error: true,
         message: "Invalid Token",
-        data: null,
+        data: null
       };
-    }
+    } 
+    if(token) {
+      const adminPayload = VerifyJwt(token);
+      console.log("AdminPayload: ", adminPayload);
+      if (adminPayload) {
+        const admin = await Admin.findOne({ _id: adminPayload.admin._id });
+        return {
+          error: !admin,
+          message: !admin ? "Expired token" : "Token is valid",
+          data: {
+            status: !!admin,
+            admin_id: admin._id,
+            admin_role: admin.role,
+            username: admin.username,
+            email: admin.email,
+          },
+        };
+      } else {
+        return {
+          error: true,
+          message: "Invalid Token",
+          data: null,
+        };
+      }
+    } else{}
   } catch (error) {
     console.log(error);
     return {

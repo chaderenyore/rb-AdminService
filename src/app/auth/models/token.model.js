@@ -3,6 +3,9 @@ module.exports.schemas = {
   token: {
     type: String
   },
+  admin_id: {
+    type: String
+  },
   email: {
     type: String
   },
