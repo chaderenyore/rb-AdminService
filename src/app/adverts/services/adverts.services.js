@@ -18,6 +18,12 @@ async function fetchAllAds(limit, page, data) {
 async function viewAds(query) {
   return await Advert.findOne(query);
 }
+async function update(query, update) {
+  return await Advert.findOneAndUpdate(query, update,  {
+    new: true,
+    lean: true,
+  });
+}
 
 async function deleteAds(query) {
   return await Advert.deleteOne(query);
@@ -27,5 +33,6 @@ module.exports = {
   create,
   fetchAllAds,
   viewAds,
+  update,
   deleteAds,
 };

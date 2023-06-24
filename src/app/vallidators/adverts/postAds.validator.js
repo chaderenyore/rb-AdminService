@@ -15,8 +15,8 @@ const options = {
 const postAdverts_schema = (advert) => {
     schema = Joi.object()
       .keys({
-        advert_object: Joi.string().optional(),
-        advert_type: Joi.string().optional().valid("top", "footer", "asset_ad", "community_ad"),
+        advert_object: Joi.string().required(),
+        advert_type: Joi.string().required().valid("top", "footer", "asset_ad", "community_ad"),
       });
   
     return schema.validate(advert, options);

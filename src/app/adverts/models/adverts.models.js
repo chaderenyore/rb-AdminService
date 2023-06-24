@@ -3,6 +3,9 @@ module.exports.schemas = {
   admin_id: {
     type: String,
   },
+  admin_username:{
+    type: String
+  },
   advert_type: {
     type: String,
     enum: ['top', "footer", "asset_ad", "community_ad"]
