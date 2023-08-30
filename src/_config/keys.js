@@ -9,7 +9,8 @@ const KEYS = {
   authUrl: process.env.AUTH_URL,
   NOTIFICATION_SERVICE_URI: process.env.NOTIFICATION_SERVICE_URI,
   ADMIN_DASHBOARD_URL: process.env.ADMIN_DASHBOARD_URL,
-  ADMIN_LOGIN_URL: process.env.ADMIN_LOGIN_URL
+  ADMIN_LOGIN_URL: process.env.ADMIN_LOGIN_URL,
+  AUTH_URI : process.env.AUTH_URI
 };
 
 module.exports = KEYS;

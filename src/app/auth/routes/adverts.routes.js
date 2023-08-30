@@ -49,7 +49,7 @@ router.delete(
 );
 
 router.get(
-  paths.deleteAdmin,
+  paths.UserViewAllAds,
   authorizeUser(["user", "org"]),
   validateInputs(UserViewAdvertsValidator, "query"),
   UserViewAdsAdvertsController.ViewAds

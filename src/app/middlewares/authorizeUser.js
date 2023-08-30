@@ -33,7 +33,6 @@ exports.authorizeUser = (role = []) => {
       );
       if (role.includes(String(user.data.data.user_type))) {
         req.user = user.data.data;
-        console.log('REQ USER============ ', req.user);
         req.token = token;
         next();
       } else {
@@ -50,13 +49,13 @@ exports.authorizeUser = (role = []) => {
         );
       }
     } catch (err) {
-      // console.log(err);
+      console.log(err);
       return next(
         createError(HTTP.UNAUTHORIZED, [
           {
             status: RESPONSE.ERROR,
             message: err.message
-              ? err.response.statusText
+              ? err.message
               : 'Opps, probably Network, we know we working on it',
             statusCode: HTTP.UNAUTHORIZED,
           },
