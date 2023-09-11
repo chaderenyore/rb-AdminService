@@ -8,7 +8,6 @@ exports.fetchAllAds = async (req, res, next) => {
     const adverts = await AdvertsServices.fetchAllAds(
       req.query.limit,
       req.query.page,
-      data
     );
     if (adverts.data.length === 0) {
       const data = {
