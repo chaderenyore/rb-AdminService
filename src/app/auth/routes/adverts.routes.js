@@ -50,7 +50,6 @@ router.delete(
 
 router.get(
   paths.UserViewAllAds,
-  // authorizeUser(["user", "org"]),
   validateInputs(UserViewAdvertsValidator, "query"),
   UserViewAdsAdvertsController.ViewAds
 );

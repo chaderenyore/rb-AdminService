@@ -6,12 +6,11 @@ async function create(payload) {
   return await Advert.create(payload);
 }
 
-async function fetchAllAds(limit, page, data) {
+async function fetchAllAds(limit, page, data = {}) {
   return getPaginatedRecords(Advert, {
     limit: limit,
     page: page,
-    data,
-    selectedFields,
+    data
   });
 }
 
